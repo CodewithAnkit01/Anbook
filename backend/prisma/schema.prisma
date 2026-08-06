@@ -9,12 +9,51 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
-model user {
-  id String @id  @default(cuid())
-  name String
+enum Role {
+  USER
+  ADMIN
+  SUPERADMIN
+}
+
+model User {
+  id String @id @default(cuid())
+
   username String @unique
-  
+  email String @unique
+  password String
+
+  profileImage String?
+  coverImage   String?
+
+  bio      String?
+  website  String?
+  location String?
+
+  isVerified Boolean @default(false)
+
+  role Role @default(USER)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  followers Follow[] @relation("followers")
+  following Follow[] @relation("following")
+
+
+
+  @@map("user")
+}
+
+model Follow{
+  id String @id @default(cuid())
+  followerId String
+  followingId String
+
+  followers User @relation("followers", fields:[followerId], references:[id], onDelete: Cascade)
+  following User @relation("following", fields:[followingId], references:[id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  @@unique([followerId, followingId])
 }
