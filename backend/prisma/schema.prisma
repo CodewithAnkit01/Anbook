@@ -17,6 +17,17 @@ enum Role {
   SUPERADMIN
 }
 
+enum PostVisibility {
+  PUBLIC
+  FOLLOWERS
+  PRIVATE
+}
+
+enum MediaType {
+  IMAGE
+  VIDEO
+}
+
 model User {
   id String @id @default(cuid())
 
@@ -25,14 +36,13 @@ model User {
   password String
 
   profileImage String?
-  coverImage   String?
+  coverImage String?
 
-  bio      String?
-  website  String?
+  bio String?
+  website String?
   location String?
 
   isVerified Boolean @default(false)
-
   role Role @default(USER)
 
   createdAt DateTime @default(now())
@@ -41,19 +51,73 @@ model User {
   followers Follow[] @relation("followers")
   following Follow[] @relation("following")
 
-
-
-  @@map("user")
+  posts Post[]
 }
 
-model Follow{
+model Follow {
   id String @id @default(cuid())
+
   followerId String
   followingId String
 
-  followers User @relation("followers", fields:[followerId], references:[id], onDelete: Cascade)
-  following User @relation("following", fields:[followingId], references:[id], onDelete: Cascade)
+  follower User @relation(
+    "followers",
+    fields: [followerId],
+    references: [id],
+    onDelete: Cascade
+  )
+
+  following User @relation(
+    "following",
+    fields: [followingId],
+    references: [id],
+    onDelete: Cascade
+  )
 
   createdAt DateTime @default(now())
+
   @@unique([followerId, followingId])
+}
+
+model Post {
+  id String @id @default(cuid())
+
+  caption String?
+
+  visibility PostVisibility @default(PUBLIC)
+
+  userId String
+
+  user User @relation(
+    fields: [userId],
+    references: [id],
+    onDelete: Cascade
+  )
+
+  media Media[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model Media {
+  id String @id @default(cuid())
+
+  url String
+  type MediaType
+
+  postId String
+
+  post Post @relation(
+    fields: [postId],
+    references: [id],
+    onDelete: Cascade
+  )
+
+  createdAt DateTime @default(now())
+
+  @@index([postId])
 }
