@@ -3,7 +3,7 @@ const router = express.Router();
 
 import { getMyProfile, getUserProfile, searchUsers, updateProfile,updateProfileImage ,updateCoverImage } from "../controllers/user.controller.js";
 import { verifyToken } from "../middleware/auth.middleware.js";
-import upload from "../middleware/multer.middleware.js";
+import upload from "../middleware/upload.middleware.js";
 
     router.get("/me",verifyToken, getMyProfile)
     router.get("/search", searchUsers);

@@ -1,8 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -32,18 +27,18 @@ model User {
   id String @id @default(cuid())
 
   username String @unique
-  email String @unique
+  email    String @unique
   password String
 
   profileImage String?
-  coverImage String?
+  coverImage   String?
 
-  bio String?
-  website String?
+  bio      String?
+  website  String?
   location String?
 
   isVerified Boolean @default(false)
-  role Role @default(USER)
+  role       Role    @default(USER)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -52,27 +47,18 @@ model User {
   following Follow[] @relation("following")
 
   posts Post[]
+
+  @@map("user")
 }
 
 model Follow {
   id String @id @default(cuid())
 
-  followerId String
+  followerId  String
   followingId String
 
-  follower User @relation(
-    "followers",
-    fields: [followerId],
-    references: [id],
-    onDelete: Cascade
-  )
-
-  following User @relation(
-    "following",
-    fields: [followingId],
-    references: [id],
-    onDelete: Cascade
-  )
+  follower  User @relation("followers", fields: [followerId], references: [id], onDelete: Cascade)
+  following User @relation("following", fields: [followingId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
 
@@ -82,17 +68,11 @@ model Follow {
 model Post {
   id String @id @default(cuid())
 
-  caption String?
-
+  caption    String?
   visibility PostVisibility @default(PUBLIC)
 
   userId String
-
-  user User @relation(
-    fields: [userId],
-    references: [id],
-    onDelete: Cascade
-  )
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   media Media[]
 
@@ -106,16 +86,11 @@ model Post {
 model Media {
   id String @id @default(cuid())
 
-  url String
+  url  String
   type MediaType
 
   postId String
-
-  post Post @relation(
-    fields: [postId],
-    references: [id],
-    onDelete: Cascade
-  )
+  post   Post @relation(fields: [postId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
 

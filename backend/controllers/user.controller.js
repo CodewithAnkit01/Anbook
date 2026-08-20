@@ -1,5 +1,5 @@
 import prisma from "../utils/prisma.js";
-import upload from "../middleware/multer.middleware.js";
+import upload from "../middleware/upload.middleware.js";
 
 export const getMyProfile = async (req, res)=>{
     try {
