@@ -1,4 +1,5 @@
 import prisma from '../utils/prisma.js'
+import { createNotification } from "../utils/notification.js";
 
 export const followUser = async (req, res)=>{
     try {
@@ -46,6 +47,12 @@ export const followUser = async (req, res)=>{
                 followerId,
                 followingId,
             }
+        })
+
+        await createNotification({
+          type: "FOLLOW",
+            recipientId: followingId,
+            senderId: followerId,
         })
 
         res.status(201).json({

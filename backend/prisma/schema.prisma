@@ -22,6 +22,12 @@ enum MediaType {
   IMAGE
   VIDEO
 }
+enum NotificationType{
+  FOLLOW
+  lIKE 
+  COMMENT 
+  REPLY
+}
 
 model User {
   id String @id @default(cuid())
@@ -46,7 +52,12 @@ model User {
   followers Follow[] @relation("followers")
   following Follow[] @relation("following")
 
-  posts Post[]
+  posts    Post[]
+  likes    Like[]
+  comments Comment[]
+
+    notificationsReceived Notification[] @relation("notificationRecipient")
+  notificationsSent Notification[] @relation("notificationSender")
 
   @@map("user")
 }
@@ -63,6 +74,8 @@ model Follow {
   createdAt DateTime @default(now())
 
   @@unique([followerId, followingId])
+  @@index([followerId])
+  @@index([followingId])
 }
 
 model Post {
@@ -72,9 +85,13 @@ model Post {
   visibility PostVisibility @default(PUBLIC)
 
   userId String
-  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  media Media[]
+  media    Media[]
+  likes    Like[]
+  comments Comment[]
+
+  notifications Notification[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -90,9 +107,78 @@ model Media {
   type MediaType
 
   postId String
-  post   Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
 
   @@index([postId])
+}
+
+model Like {
+  id String @id @default(cuid())
+
+  userId String
+  postId String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, postId])
+  @@index([userId])
+  @@index([postId])
+  @@index([createdAt])
+}
+
+model Comment {
+  id String @id @default(cuid())
+
+  content String
+
+  userId String
+  postId String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  notifications Notification[]
+
+  @@index([userId])
+  @@index([postId])
+  @@index([createdAt])
+}
+
+
+model Notification {
+  id String @id @default(cuid())
+
+  type NotificationType
+
+  recipientId String
+  senderId String
+
+  postId String?
+  commentId String?
+
+  isRead Boolean @default(false)
+
+  recipient User @relation("notificationRecipient",fields: [recipientId],references: [id],onDelete: Cascade)
+
+  sender User @relation("notificationSender",fields: [senderId],references: [id],onDelete: Cascade)
+
+  post Post? @relation(fields: [postId],references: [id],onDelete: Cascade)
+
+  comment Comment? @relation(fields: [commentId],references: [id],onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([recipientId, createdAt])
+  @@index([senderId])
+  @@index([postId])
+  @@index([commentId])
+  @@index([isRead])
 }
