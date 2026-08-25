@@ -99,7 +99,8 @@ export const getPostComments = async (req, res)=>{
 
       const comments = prisma.comment.findMany({
         where:{
-          postId
+          postId,
+          parentId:null,
         },
         skip,
         take: limit,
@@ -120,7 +121,8 @@ export const getPostComments = async (req, res)=>{
       })
       const total = await prisma.comment.count({
         where:{
-          postId
+          postId,
+          parentId:null,
         }
       })
       res.status(200).json({
@@ -311,6 +313,195 @@ export const getCommentCount = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to get comment count.",
+    });
+  }
+};
+
+//create comment reply
+
+export const createReply = async (req, res)=>{
+  try {
+
+    const userId = req.user.id;
+    const {commentId }= req.params;
+    const {content} = req.body;
+
+    if(!content || content.trim()){
+      return res.status(400).json({
+        success: false,
+        message: "Reply cannot be empty.",
+      });
+    }
+     if (content.trim().length > 500) {
+      return res.status(400).json({
+        success: false,
+        message: "Reply cannot exceed 500 characters.",
+      });
+    }
+
+    const parentComment = await prisma.comment.findUnique({
+      where:{
+        id: commentId,
+      },
+      select:{
+        id:true,
+        postId:true,
+        userId:true
+      }
+    })
+
+    if (!parentComment) {
+      return res.status(404).json({
+        success: false,
+        message: "Comment not found.",
+      });
+    }
+
+    const reply = await prisma.comment.create({
+      data:{
+        content: content.trim(),
+        userId,
+        postId: parentComment.postId,
+        parentId:parentComment.id,
+      },
+      include:{
+        user: {
+          select: {
+            id: true,
+            username: true,
+            profileImage: true,
+            isVerified: true,
+          },
+        },
+      }
+    })
+
+    await createNotification({
+      type:"REPLY",
+      recipientId: parentComment.userId,
+
+      senderId: userId,
+
+      postId: parentComment.postId,
+
+      commentId: reply.id,
+    })
+
+
+    return res.status(201).json({
+      success: true,
+      message: "Reply created successfully.",
+      reply,
+    });
+    
+  } catch (error) {
+    console.error(
+      "Create reply error:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to create reply.",
+    });
+  }
+}
+
+export const getCommentReplies = async (req, res) => {
+  try {
+    const { commentId } = req.params;
+
+    const page = Math.max(
+      Number(req.query.page) || 1,
+      1
+    );
+
+    const limit = Math.min(
+      Math.max(
+        Number(req.query.limit) || 10,
+        1
+      ),
+      50
+    );
+
+    const skip = (page - 1) * limit;
+
+    // Check parent comment
+    const parentComment =
+      await prisma.comment.findUnique({
+        where: {
+          id: commentId,
+        },
+
+        select: {
+          id: true,
+        },
+      });
+
+    if (!parentComment) {
+      return res.status(404).json({
+        success: false,
+        message: "Comment not found.",
+      });
+    }
+
+    const replies =
+      await prisma.comment.findMany({
+        where: {
+          parentId: commentId,
+        },
+
+        skip,
+        take: limit,
+
+        orderBy: {
+          createdAt: "asc",
+        },
+
+        include: {
+          user: {
+            select: {
+              id: true,
+              username: true,
+              profileImage: true,
+              isVerified: true,
+            },
+          },
+        },
+      });
+
+    const total =
+      await prisma.comment.count({
+        where: {
+          parentId: commentId,
+        },
+      });
+
+    return res.status(200).json({
+      success: true,
+
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(
+          total / limit
+        ),
+        hasNextPage:
+          page < Math.ceil(total / limit),
+      },
+
+      replies,
+    });
+  } catch (error) {
+    console.error(
+      "Get replies error:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to get replies.",
     });
   }
 };

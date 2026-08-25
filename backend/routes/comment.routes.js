@@ -6,6 +6,8 @@ import {
   updateComment,
   deleteComment,
   getCommentCount,
+  createReply,
+  getCommentReplies,
 } from "../controllers/comment.controller.js";
 
 import { verifyToken } from "../middleware/auth.middleware.js";
@@ -21,13 +23,6 @@ router.post(
 );
 
 
-// Get comments
-router.get(
-  "/:postId",
-  getPostComments
-);
-
-
 // Comment count
 router.get(
   "/:postId/count",
@@ -35,7 +30,29 @@ router.get(
 );
 
 
-// Update comment
+// Get post comments
+router.get(
+  "/:postId",
+  getPostComments
+);
+
+
+// Create reply
+router.post(
+  "/:commentId/reply",
+  verifyToken,
+  createReply
+);
+
+
+// Get replies
+router.get(
+  "/:commentId/replies",
+  getCommentReplies
+);
+
+
+// Update comment/reply
 router.put(
   "/:commentId",
   verifyToken,
@@ -43,7 +60,7 @@ router.put(
 );
 
 
-// Delete comment
+// Delete comment/reply
 router.delete(
   "/:commentId",
   verifyToken,

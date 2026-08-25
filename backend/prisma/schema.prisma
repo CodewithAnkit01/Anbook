@@ -55,6 +55,7 @@ model User {
   posts    Post[]
   likes    Like[]
   comments Comment[]
+  bookmarks Bookmark[]
 
     notificationsReceived Notification[] @relation("notificationRecipient")
   notificationsSent Notification[] @relation("notificationSender")
@@ -90,6 +91,7 @@ model Post {
   media    Media[]
   likes    Like[]
   comments Comment[]
+  bookmarks Bookmark[]
 
   notifications Notification[]
 
@@ -139,8 +141,13 @@ model Comment {
   userId String
   postId String
 
+   parentId String?
+   
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  parent Comment? @relation("CommentReplies",fields: [parentId],references: [id],onDelete: Cascade)
+
+  replies Comment[] @relation("CommentReplies")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -181,4 +188,21 @@ model Notification {
   @@index([postId])
   @@index([commentId])
   @@index([isRead])
+}
+
+
+model Bookmark {
+  id String @id @default(cuid())
+
+  userId String
+  postId String
+
+  user User @relation(fields:[userId], references:[id], onDelete: Cascade)
+  post Post @relation(fields:[postId], references:[id], onDelete:Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, postId])
+  @@index([userId, createdAt])
+  @@index([postId])
 }
