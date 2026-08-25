@@ -92,6 +92,7 @@ model Post {
   likes    Like[]
   comments Comment[]
   bookmarks Bookmark[]
+  hashtags PostHashtag[]
 
   notifications Notification[]
 
@@ -142,7 +143,7 @@ model Comment {
   postId String
 
    parentId String?
-   
+
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
   parent Comment? @relation("CommentReplies",fields: [parentId],references: [id],onDelete: Cascade)
@@ -205,4 +206,30 @@ model Bookmark {
   @@unique([userId, postId])
   @@index([userId, createdAt])
   @@index([postId])
+}
+
+
+model Hashtag {
+  id String @id @default(cuid())
+
+  name String @unique
+
+  posts PostHashtag[]
+
+  createdAt DateTime @default(now())
+}
+
+model PostHashtag {
+  id String @id @default(cuid())
+
+  postId String
+  hashtagId String
+
+  post Post @relation(fields: [postId],references: [id],onDelete: Cascade)
+
+  hashtag Hashtag @relation(fields: [hashtagId],references: [id],onDelete: Cascade)
+
+  @@unique([postId, hashtagId])
+  @@index([postId])
+  @@index([hashtagId])
 }

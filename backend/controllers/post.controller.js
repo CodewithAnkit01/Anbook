@@ -1,6 +1,9 @@
 import prisma from "../utils/prisma.js";
 import { v2 as cloudinary } from "cloudinary";
 import fs from "fs";
+import {
+  connectHashtags,
+} from "../utils/hashtag.js";
 
 export const createPost = async (req, res) => {
   try {
@@ -80,6 +83,11 @@ export const createPost = async (req, res) => {
         },
       },
     });
+
+    await connectHashtags(
+  post.id,
+  caption
+);
 
     return res.status(201).json({
       success: true,

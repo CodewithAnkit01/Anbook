@@ -21,6 +21,7 @@ import likeRoutes from "./routes/like.routes.js";
 import commentRoutes from "./routes/comment.routes.js";
 import notificationRoutes from "./routes/notification.routes.js";
 import bookmarkRoutes from "./routes/bookmark.routes.js";
+import searchRoutes from "./routes/search.routes.js";
 
 
 
@@ -35,6 +36,7 @@ app.use("/api/v1/likes", likeRoutes)
 app.use("/api/v1/comments", commentRoutes);
 app.use("/api/v1/notifications",notificationRoutes);
 app.use("/api/v1/bookmarks",bookmarkRoutes);
+app.use("/api/v1/search",searchRoutes);
 
 
 
