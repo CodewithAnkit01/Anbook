@@ -22,11 +22,28 @@ enum MediaType {
   IMAGE
   VIDEO
 }
+
 enum NotificationType{
   FOLLOW
   lIKE 
   COMMENT 
   REPLY
+}
+
+enum ReportTargetType {
+  USER
+  POST
+  COMMENT
+}
+
+enum ReportReason {
+  SPAM
+  HARASSMENT
+  HATE_SPEECH
+  VIOLENCE
+  SEXUAL_CONTENT
+  MISINFROMATION
+  OTHER
 }
 
 model User {

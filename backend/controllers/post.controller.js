@@ -289,6 +289,10 @@ export const updatePost = async (req, res)=>{
         media: true,
       },
     });
+    await connectHashtags(
+  post.id,
+  caption
+);
 
     res.status(200).json({
       success: true,
