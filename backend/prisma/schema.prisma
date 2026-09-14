@@ -46,6 +46,13 @@ enum ReportReason {
   OTHER
 }
 
+enum ReportStatus{
+  PENDING
+  REVIEWING
+  RESOLVED
+  REJECTED
+}
+
 model User {
   id String @id @default(cuid())
 
@@ -63,6 +70,10 @@ model User {
   isVerified Boolean @default(false)
   role       Role    @default(USER)
 
+  isBanned Boolean @default(false)
+  bannedAt DateTime?
+  bannedReason String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -74,8 +85,13 @@ model User {
   comments Comment[]
   bookmarks Bookmark[]
 
-    notificationsReceived Notification[] @relation("notificationRecipient")
+  notificationsReceived Notification[] @relation("notificationRecipient")
   notificationsSent Notification[] @relation("notificationSender")
+
+  reportsMade  Report[] @relation("reporter")
+  reportsReviewed Report[] @relation("reviewer")
+
+  
 
   @@map("user")
 }
@@ -249,4 +265,33 @@ model PostHashtag {
   @@unique([postId, hashtagId])
   @@index([postId])
   @@index([hashtagId])
+}
+
+model Report {
+  id String @id @default(cuid())
+
+  reporterId String
+  targetType ReportTargetType
+  targetId String
+
+  reason ReportReason
+  description String?
+
+  status ReportStatus @default(PENDING)
+
+  reviewedBy String?
+  reviewedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  reporter User @relation("reporter", fields:[reporterId], references:[id], onDelete:Cascade)
+  reviewer User? @relation("reviewer", fields:[reviewedBy], references:[id], onDelete:SetNull)
+
+
+
+  @@index([reporterId])
+  @@index([targetType, targetId])
+  @@index([status])
+  @@index([createdAt])
 }

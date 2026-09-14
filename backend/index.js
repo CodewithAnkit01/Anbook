@@ -23,6 +23,7 @@ import notificationRoutes from "./routes/notification.routes.js";
 import bookmarkRoutes from "./routes/bookmark.routes.js";
 import searchRoutes from "./routes/search.routes.js";
 import hashtagRoutes from "./routes/hashtag.routes.js"
+import reportRoutes from "./routes/report.routes.js";
 
 
 
@@ -39,6 +40,7 @@ app.use("/api/v1/notifications",notificationRoutes);
 app.use("/api/v1/bookmarks",bookmarkRoutes);
 app.use("/api/v1/search",searchRoutes);
 app.use("/api/v1/hashtags", hashtagRoutes);
+app.use("/api/v1/reports", reportRoutes)
 
 
 
