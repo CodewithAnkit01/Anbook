@@ -1,6 +1,6 @@
 import prisma from '../utils/prisma.js'
 import { createNotification } from "../utils/notification.js";
-
+import { emitNotification } from "../socket/notification.socket.js";
 export const followUser = async (req, res)=>{
     try {
         const followerId = req.user.id;
@@ -49,11 +49,17 @@ export const followUser = async (req, res)=>{
             }
         })
 
-        await createNotification({
-          type: "FOLLOW",
-            recipientId: followingId,
-            senderId: followerId,
-        })
+const notification = await prisma.notification.create({
+  data: {
+    userId: followingUserId,
+    senderId: req.user.id,
+    type: "FOLLOW"
+  }
+});
+emitNotification(
+  followingUserId,
+  notification
+);
 
         res.status(201).json({
             success: true,

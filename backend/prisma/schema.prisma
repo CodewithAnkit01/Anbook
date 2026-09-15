@@ -23,10 +23,10 @@ enum MediaType {
   VIDEO
 }
 
-enum NotificationType{
+enum NotificationType {
   FOLLOW
-  lIKE 
-  COMMENT 
+  LIKE
+  COMMENT
   REPLY
 }
 
@@ -88,6 +88,10 @@ model User {
   notificationsReceived Notification[] @relation("notificationRecipient")
   notificationsSent Notification[] @relation("notificationSender")
 
+conversationsAsUser1 Conversation[] @relation("conversationUser1")
+conversationsAsUser2 Conversation[] @relation("conversationUser2")
+
+messages Message[]
   reportsMade  Report[] @relation("reporter")
   reportsReviewed Report[] @relation("reviewer")
 
@@ -294,4 +298,45 @@ model Report {
   @@index([targetType, targetId])
   @@index([status])
   @@index([createdAt])
+}
+
+model Conversation{
+  id String @id @default(cuid())
+
+  user1Id String
+  user2Id String
+
+  user1 User @relation("conversationUser1", fields: [user1Id], references: [id], onDelete: Cascade)
+  user2 User @relation("conversationUser2", fields: [user2Id], references: [id], onDelete: Cascade)
+
+  messages Message[]
+
+    createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([user1Id, user2Id])
+  @@index([user1Id])
+  @@index([user2Id])
+  @@index([updatedAt])
+}
+
+model Message{
+  id String @id @default(cuid())
+  content String
+
+  senderId String
+  conversationId String
+
+    sender User @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  conversation Conversation @relation(fields: [conversationId], references: [id],onDelete: Cascade)
+    
+     isRead Boolean @default(false)
+
+    createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([senderId])
+  @@index([conversationId, createdAt])
+  @@index([isRead])
+
 }

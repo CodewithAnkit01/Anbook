@@ -1,6 +1,6 @@
 import prisma from "../utils/prisma.js";
 import { createNotification } from "../utils/notification.js";
-
+import { emitNotification } from "../socket/notification.socket.js";
 export const likePost = async (req, res)=>{
     try {
         const userId = req.user.id;
@@ -39,12 +39,19 @@ export const likePost = async (req, res)=>{
       },
     });
 
-    await createNotification({
-  type: "LIKE",
-  recipientId: post.userId,
-  senderId: userId,
-  postId,
+ const notification = await prisma.notification.create({
+  data: {
+    userId: post.userId,
+    senderId: req.user.id,
+    type: "LIKE",
+    postId: post.id
+  }
 });
+
+emitNotification(
+  post.userId,
+  notification
+);
 
     const likeCount = await prisma.like.count({
       where: {

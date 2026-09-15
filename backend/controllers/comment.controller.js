@@ -1,5 +1,6 @@
 import prisma from "../utils/prisma.js";
 import { createNotification } from "../utils/notification.js";
+import { emitNotification } from "../socket/notification.socket.js";
 export const createComment = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -51,13 +52,20 @@ export const createComment = async (req, res) => {
         },
       },
     });
-            await createNotification({
-  type: "COMMENT",
-  recipientId: post.userId,
-  senderId: userId,
-  postId,
-  commentId: comment.id,
+
+const notification = await prisma.notification.create({
+  data: {
+    userId: post.userId,
+    senderId: req.user.id,
+    type: "COMMENT",
+    postId: post.id
+  }
 });
+
+emitNotification(
+  post.userId,
+  notification
+);
     res.status(201).json({
       success: true,
       message: "Comment created successfully.",
@@ -376,16 +384,20 @@ export const createReply = async (req, res)=>{
       }
     })
 
-    await createNotification({
-      type:"REPLY",
-      recipientId: parentComment.userId,
+const notification = await prisma.notification.create({
+  data: {
+    recipientId: parentComment.userId,
+    senderId: req.user.id,
+    type: "REPLY",
+    postId: parentComment.postId,
+    commentId: parentComment.id
+  }
+});
 
-      senderId: userId,
-
-      postId: parentComment.postId,
-
-      commentId: reply.id,
-    })
+emitNotification(
+  parentComment.userId,
+  notification
+);
 
 
     return res.status(201).json({
