@@ -3,12 +3,14 @@ import { socketAuth } from "./socket.auth.js";
 
 let io;
 
+const onlineUsers = new Map();
+
 export const initializeSocket = (server) => {
   io = new Server(server, {
     cors: {
       origin: process.env.FRONTEND_URL,
-      credentials: true
-    }
+      credentials: true,
+    },
   });
 
   // Socket authentication
@@ -21,26 +23,148 @@ export const initializeSocket = (server) => {
       `🟢 User connected: ${socket.user.username}`
     );
 
-    // Private room for each user
+    // ==========================================
+    // PERSONAL USER ROOM
+    // ==========================================
+
     socket.join(`user:${userId}`);
 
-    // Send connection confirmation
-    socket.emit("connected", {
-      success: true,
-      message: "Connected to real-time server."
+    // ==========================================
+    // ONLINE USERS
+    // ==========================================
+
+    onlineUsers.set(userId, socket.id);
+
+    socket.broadcast.emit("user:online", {
+      userId,
     });
 
-    // Client manually marks notification as read
-    socket.on("notification:read", (notificationId) => {
-      socket.emit("notification:read:success", {
-        notificationId
-      });
+    // ==========================================
+    // CONNECTION CONFIRMATION
+    // ==========================================
+
+    socket.emit("connected", {
+      success: true,
+      message: "Connected to real-time server.",
     });
+
+    // ==========================================
+    // NOTIFICATION READ
+    // ==========================================
+
+    socket.on(
+      "notification:read",
+      (notificationId) => {
+        socket.emit(
+          "notification:read:success",
+          {
+            notificationId,
+          }
+        );
+      }
+    );
+
+    // ==========================================
+    // MESSAGE READ
+    // ==========================================
+
+    socket.on("message:read", (data) => {
+      try {
+        const {
+          messageId,
+          senderId,
+          conversationId,
+        } = data;
+
+        if (!messageId || !senderId) {
+          return socket.emit(
+            "message:error",
+            {
+              success: false,
+              message:
+                "Message ID and sender ID are required.",
+            }
+          );
+        }
+
+        socket
+          .to(`user:${senderId}`)
+          .emit("message:read", {
+            messageId,
+            conversationId,
+            readBy: userId,
+            readAt: new Date(),
+          });
+      } catch (error) {
+        console.error(
+          "Message read socket error:",
+          error
+        );
+      }
+    });
+
+    // ==========================================
+    // TYPING START
+    // ==========================================
+
+    socket.on("typing:start", (data) => {
+      const {
+        receiverId,
+        conversationId,
+      } = data;
+
+      if (!receiverId || !conversationId) {
+        return;
+      }
+
+      socket
+        .to(`user:${receiverId}`)
+        .emit("typing:start", {
+          conversationId,
+          userId,
+          username: socket.user.username,
+        });
+    });
+
+    // ==========================================
+    // TYPING STOP
+    // ==========================================
+
+    socket.on("typing:stop", (data) => {
+      const {
+        receiverId,
+        conversationId,
+      } = data;
+
+      if (!receiverId || !conversationId) {
+        return;
+      }
+
+      socket
+        .to(`user:${receiverId}`)
+        .emit("typing:stop", {
+          conversationId,
+          userId,
+        });
+    });
+
+    // ==========================================
+    // DISCONNECT
+    // ==========================================
 
     socket.on("disconnect", (reason) => {
       console.log(
         `🔴 User disconnected: ${socket.user.username}`,
         reason
+      );
+
+      onlineUsers.delete(userId);
+
+      socket.broadcast.emit(
+        "user:offline",
+        {
+          userId,
+        }
       );
     });
   });
@@ -51,6 +175,10 @@ export const initializeSocket = (server) => {
 };
 
 
+// ==========================================
+// GET SOCKET.IO INSTANCE
+// ==========================================
+
 export const getIO = () => {
   if (!io) {
     throw new Error(
@@ -59,4 +187,13 @@ export const getIO = () => {
   }
 
   return io;
+};
+
+
+// ==========================================
+// CHECK ONLINE STATUS
+// ==========================================
+
+export const isUserOnline = (userId) => {
+  return onlineUsers.has(userId);
 };

@@ -1,4 +1,5 @@
 import prisma from "../utils/prisma.js";
+import { emitNewMessage, emitMessageRead } from "../socket/message.socket.js";
 
 export const createConversation = async (req, res)=>{
     try {
@@ -315,6 +316,267 @@ export const getMessages = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to get messages.",
+    });
+  }
+};
+
+export const sendMessage = async (req, res)=>{
+  try {
+    const userId = req.user.id;
+
+    const {conversationId} = req.params;
+
+    const {content } = req.body;
+
+    if(!content || !content.trim()){
+            return res.status(400).json({
+        success: false,
+        message: "Message content is required.",
+      });
+    }
+
+    const conversation = await prisma.conversation.findFirst({
+      where:{
+        id:conversationId,
+        OR:[
+          {
+            user1Id: userId,
+          },
+          {
+            user2Id: userId,
+          },
+        ]
+      }
+    })
+
+
+    if(!conversation){
+            return res.status(404).json({
+        success: false,
+        message: "Conversation not found.",
+      });
+
+    }
+
+      const receiverId =
+      conversation.user1Id === userId
+        ? conversation.user2Id
+        : conversation.user1Id;
+
+        const receiver = await prisma.user.findUnique({
+          where:{
+            id: receiverId,
+          },
+          select:{
+            id: true,
+            isBanned:true,
+          },
+        });
+
+    if (!receiver) {
+      return res.status(404).json({
+        success: false,
+        message: "Receiver not found.",
+      });
+    }
+
+    if (receiver.isBanned) {
+      return res.status(403).json({
+        success: false,
+        message: "Cannot send message to this user.",
+      });
+    }
+
+const message =
+      await prisma.message.create({
+        data: {
+          content: content.trim(),
+
+          senderId: userId,
+
+          conversationId,
+        },
+
+        include: {
+          sender: {
+            select: {
+              id: true,
+              username: true,
+              profileImage: true,
+              isVerified: true,
+            },
+          },
+        },
+      });
+
+    // Update conversation timestamp
+    await prisma.conversation.update({
+      where: {
+        id: conversationId,
+      },
+
+      data: {
+        updatedAt: new Date(),
+      },
+    });
+
+    emitNewMessage(
+  receiverId,
+  message
+);
+
+    res.status(201).json({
+      success: true,
+
+      message,
+    });
+  } catch (error) {
+    console.error(
+      "Send message error:",
+      error
+    );
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to send message.",
+    });
+  }
+};
+
+
+export const markMessageAsRead = async (req, res)=>{
+  try {
+    const userId = req.user.id;
+
+    const {messageId} = req.params;
+
+        const message =
+      await prisma.message.findUnique({
+        where: {
+          id: messageId,
+        },
+
+        include: {
+          conversation: true,
+        },
+      });
+
+    if (!message) {
+      return res.status(404).json({
+        success: false,
+        message: "Message not found.",
+      });
+    }
+
+    const conversation =
+      message.conversation;
+
+    const isParticipant =
+      conversation.user1Id === userId ||
+      conversation.user2Id === userId;
+
+    if (!isParticipant) {
+      return res.status(403).json({
+        success: false,
+        message: "You are not part of this conversation.",
+      });
+    }
+
+    // Sender doesn't need to mark own message
+    if (message.senderId === userId) {
+      return res.status(400).json({
+        success: false,
+        message: "You cannot mark your own message as read.",
+      });
+    }
+
+ const updated =
+      await prisma.message.update({
+        where: {
+          id: messageId,
+        },
+
+        data: {
+          isRead: true,
+        },
+      });
+emitMessageRead(
+  message.senderId,
+  {
+    messageId: message.id,
+    conversationId: message.conversationId,
+    readBy: userId,
+    readAt: new Date(),
+  }
+);
+    res.status(200).json({
+      success: true,
+
+      message: updated,
+    });
+  } catch (error) {
+    console.error(
+      "Mark message read error:",
+      error
+    );
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to mark message as read.",
+    });
+  }
+};
+
+export const deleteMessage = async (
+  req,
+  res
+) => {
+  try {
+    const userId = req.user.id;
+
+    const { messageId } = req.params;
+
+    const message =
+      await prisma.message.findUnique({
+        where: {
+          id: messageId,
+        },
+      });
+
+    if (!message) {
+      return res.status(404).json({
+        success: false,
+        message: "Message not found.",
+      });
+    }
+
+    if (message.senderId !== userId) {
+      return res.status(403).json({
+        success: false,
+        message: "You can only delete your own messages.",
+      });
+    }
+
+    await prisma.message.delete({
+      where: {
+        id: messageId,
+      },
+    });
+
+    res.status(200).json({
+      success: true,
+
+      message: "Message deleted successfully.",
+    });
+  } catch (error) {
+    console.error(
+      "Delete message error:",
+      error
+    );
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to delete message.",
     });
   }
 };
