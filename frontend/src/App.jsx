@@ -34,7 +34,7 @@ const App = () => (
 
     {/* Public pages */}
     <Route path="/login" element={<Login />} />
-    <Route path="/register" element={<Register />} />\
+    <Route path="/register" element={<Register />} />
     <Route path="/banned" element={<BannedAccount />} />
 
     {/* Protected pages, wrapped in the navbar layout */}
@@ -42,7 +42,7 @@ const App = () => (
       <Route element={<AppLayout />}>
         <Route path="/feed" element={<Feed />} />
         <Route path="/profile/:username" element={<Profile />} />
-         <Route path="/bookmarks" element={<Bookmarks />} />
+        <Route path="/bookmarks" element={<Bookmarks />} />
         <Route path="/notifications" element={<Notifications />} />
         <Route path="/post/:id" element={<PostDetail />} />
         <Route path="/search" element={<Search />} />
@@ -50,10 +50,8 @@ const App = () => (
         <Route path="/messages" element={<Messages />} />
         <Route path="/messages/:conversationId" element={<ChatWindow />} />
         <Route path="/my-reports" element={<MyReports />} />
-        
-        
 
-                <Route element={<AdminRoute />}>
+        <Route element={<AdminRoute />}>
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<AdminDashboard />} />
             <Route path="reports" element={<AdminReports />} />
@@ -62,7 +60,6 @@ const App = () => (
             <Route path="comments" element={<AdminComments />} />
           </Route>
         </Route>
-
       </Route>
     </Route>
 
