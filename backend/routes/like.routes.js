@@ -1,5 +1,4 @@
 import express from "express";
-
 import {
   likePost,
   unlikePost,
@@ -7,48 +6,14 @@ import {
   checkLike,
   getPostLikes,
 } from "../controllers/like.controller.js";
-
-import { verifyToken } from "../middleware/auth.middleware.js";
+import { verifyToken, optionalAuth } from "../middleware/auth.middleware.js";
 
 const router = express.Router();
 
-
-// Like
-router.post(
-  "/:postId",
-  verifyToken,
-  likePost
-);
-
-
-// Unlike
-router.delete(
-  "/:postId",
-  verifyToken,
-  unlikePost
-);
-
-
-// Check if current user liked
-router.get(
-  "/:postId/check",
-  verifyToken,
-  checkLike
-);
-
-
-// Get users who liked
-router.get(
-  "/:postId/users",
-  getPostLikes
-);
-
-
-// Get like count
-router.get(
-  "/:postId",
-  getLikeCount
-);
-
+router.post("/:postId", verifyToken, likePost);
+router.delete("/:postId", verifyToken, unlikePost);
+router.get("/:postId/check", verifyToken, checkLike);
+router.get("/:postId/users", optionalAuth, getPostLikes);
+router.get("/:postId", optionalAuth, getLikeCount);
 
 export default router;

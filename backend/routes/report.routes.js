@@ -1,21 +1,12 @@
 import express from "express";
-import {
-  createReport,
-  getMyReports,
-  getReportById,
-} from "../controllers/report.controller.js";
-
+import { createReport, getMyReports, getReportById } from "../controllers/report.controller.js";
 import { verifyToken } from "../middleware/auth.middleware.js";
-
-import {
-  validateReport,
-} from "../validators/report.validator.js";
-
+import { validateReport } from "../validators/report.validator.js";
 
 const router = express.Router();
 
-router.post("/", verifyToken, validateReport, createReport)
-router.get("/my", verifyToken, validateReport, getMyReports)
-router.get("/:id", verifyToken, validateReport, getReportById)
+router.post("/", verifyToken, validateReport, createReport);
+router.get("/my", verifyToken, getMyReports);
+router.get("/:id", verifyToken, getReportById);
 
 export default router;

@@ -81,14 +81,7 @@ app.get("/", (req, res) => {
   res.send("Hello World!");
 });
 
-app.use(
-  (req, res) => {
-    res.status(404).json({
-      success: false,
-      message: "Route not found.",
-    });
-  }
-);
+
 // Routes
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/users", userRoutes);
@@ -131,7 +124,14 @@ export const validate = (
 
   next();
 };
-
+app.use(
+  (req, res) => {
+    res.status(404).json({
+      success: false,
+      message: "Route not found.",
+    });
+  }
+);
 
 
 export default app;

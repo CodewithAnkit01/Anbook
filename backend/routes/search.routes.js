@@ -6,23 +6,14 @@ import {
   searchHashtags,
   search,
 } from "../controllers/search.controller.js";
+import { optionalAuth } from "../middleware/auth.middleware.js";
 
 const router = express.Router();
 
 
-// Unified search
-router.get("/", search);
-
-
-// Users
+router.get("/", optionalAuth, search);
 router.get("/users", searchUsers);
-
-
-// Posts
-router.get("/posts", searchPosts);
-
-
-// Hashtags
+router.get("/posts", optionalAuth, searchPosts);
 router.get("/hashtags", searchHashtags);
 
 

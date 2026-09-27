@@ -1,8 +1,10 @@
+
 import { Server } from "socket.io";
 import { socketAuth } from "./socket.auth.js";
 
 let io;
 
+// userId -> Set of socket IDs
 const onlineUsers = new Map();
 
 export const initializeSocket = (server) => {
@@ -13,8 +15,15 @@ export const initializeSocket = (server) => {
     },
   });
 
-  // Socket authentication
+  // ==========================================
+  // SOCKET AUTHENTICATION
+  // ==========================================
+
   io.use(socketAuth);
+
+  // ==========================================
+  // CONNECTION
+  // ==========================================
 
   io.on("connection", (socket) => {
     const userId = socket.user.id;
@@ -24,7 +33,7 @@ export const initializeSocket = (server) => {
     );
 
     // ==========================================
-    // PERSONAL USER ROOM
+    // USER ROOM
     // ==========================================
 
     socket.join(`user:${userId}`);
@@ -33,36 +42,50 @@ export const initializeSocket = (server) => {
     // ONLINE USERS
     // ==========================================
 
-    onlineUsers.set(userId, socket.id);
+    // First socket connection for this user
+    if (!onlineUsers.has(userId)) {
+      onlineUsers.set(userId, new Set());
 
-    socket.broadcast.emit("user:online", {
-      userId,
-    });
+      // Tell other connected users that this user
+      // is now online
+      socket.broadcast.emit("user:online", {
+        userId,
+      });
+    }
+
+    // Add this socket to the user's socket set
+    onlineUsers.get(userId).add(socket.id);
 
     // ==========================================
-    // CONNECTION CONFIRMATION
+    // CONNECTION SUCCESS
     // ==========================================
 
     socket.emit("connected", {
       success: true,
       message: "Connected to real-time server.",
+      onlineUsers: Array.from(onlineUsers.keys()),
     });
 
     // ==========================================
     // NOTIFICATION READ
     // ==========================================
 
-    socket.on(
-      "notification:read",
-      (notificationId) => {
-        socket.emit(
-          "notification:read:success",
-          {
-            notificationId,
-          }
+    socket.on("notification:read", (notificationId) => {
+      try {
+        if (!notificationId) {
+          return;
+        }
+
+        socket.emit("notification:read:success", {
+          notificationId,
+        });
+      } catch (error) {
+        console.error(
+          "Notification read socket error:",
+          error
         );
       }
-    );
+    });
 
     // ==========================================
     // MESSAGE READ
@@ -74,17 +97,14 @@ export const initializeSocket = (server) => {
           messageId,
           senderId,
           conversationId,
-        } = data;
+        } = data || {};
 
         if (!messageId || !senderId) {
-          return socket.emit(
-            "message:error",
-            {
-              success: false,
-              message:
-                "Message ID and sender ID are required.",
-            }
-          );
+          return socket.emit("message:error", {
+            success: false,
+            message:
+              "Message ID and sender ID are required.",
+          });
         }
 
         socket
@@ -108,22 +128,29 @@ export const initializeSocket = (server) => {
     // ==========================================
 
     socket.on("typing:start", (data) => {
-      const {
-        receiverId,
-        conversationId,
-      } = data;
-
-      if (!receiverId || !conversationId) {
-        return;
-      }
-
-      socket
-        .to(`user:${receiverId}`)
-        .emit("typing:start", {
+      try {
+        const {
+          receiverId,
           conversationId,
-          userId,
-          username: socket.user.username,
-        });
+        } = data || {};
+
+        if (!receiverId || !conversationId) {
+          return;
+        }
+
+        socket
+          .to(`user:${receiverId}`)
+          .emit("typing:start", {
+            conversationId,
+            userId,
+            username: socket.user.username,
+          });
+      } catch (error) {
+        console.error(
+          "Typing start socket error:",
+          error
+        );
+      }
     });
 
     // ==========================================
@@ -131,21 +158,28 @@ export const initializeSocket = (server) => {
     // ==========================================
 
     socket.on("typing:stop", (data) => {
-      const {
-        receiverId,
-        conversationId,
-      } = data;
-
-      if (!receiverId || !conversationId) {
-        return;
-      }
-
-      socket
-        .to(`user:${receiverId}`)
-        .emit("typing:stop", {
+      try {
+        const {
+          receiverId,
           conversationId,
-          userId,
-        });
+        } = data || {};
+
+        if (!receiverId || !conversationId) {
+          return;
+        }
+
+        socket
+          .to(`user:${receiverId}`)
+          .emit("typing:stop", {
+            conversationId,
+            userId,
+          });
+      } catch (error) {
+        console.error(
+          "Typing stop socket error:",
+          error
+        );
+      }
     });
 
     // ==========================================
@@ -158,14 +192,24 @@ export const initializeSocket = (server) => {
         reason
       );
 
-      onlineUsers.delete(userId);
+      const userSockets = onlineUsers.get(userId);
 
-      socket.broadcast.emit(
-        "user:offline",
-        {
+      if (!userSockets) {
+        return;
+      }
+
+      // Remove only this socket
+      userSockets.delete(socket.id);
+
+      // If user has no remaining sockets,
+      // mark the user as offline
+      if (userSockets.size === 0) {
+        onlineUsers.delete(userId);
+
+        socket.broadcast.emit("user:offline", {
           userId,
-        }
-      );
+        });
+      }
     });
   });
 
@@ -173,7 +217,6 @@ export const initializeSocket = (server) => {
 
   return io;
 };
-
 
 // ==========================================
 // GET SOCKET.IO INSTANCE
@@ -189,7 +232,6 @@ export const getIO = () => {
   return io;
 };
 
-
 // ==========================================
 // CHECK ONLINE STATUS
 // ==========================================
@@ -197,3 +239,12 @@ export const getIO = () => {
 export const isUserOnline = (userId) => {
   return onlineUsers.has(userId);
 };
+
+// ==========================================
+// GET ONLINE USERS
+// ==========================================
+
+export const getOnlineUsers = () => {
+  return Array.from(onlineUsers.keys());
+};
+

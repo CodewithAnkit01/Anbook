@@ -10,7 +10,7 @@ const generateToken = (user)=>{
         role: user.role,
     },
 process.env.JWT_ACCESS_SECRET,{
-    expiresIn: "15m",
+    expiresIn: "24h",
 }
 );
 };
@@ -161,6 +161,15 @@ export const login = async (req, res)=>{
       })
     }
 
+    if (user.isBanned) {
+  return res.status(403).json({
+    success: false,
+    message: "This account has been suspended.",
+    isBanned: true,
+    bannedReason: user.bannedReason,
+    bannedAt: user.bannedAt,
+  });
+}
     const token = generateToken(user);
     const { password: _, ...userWithoutPassword } = user;
 

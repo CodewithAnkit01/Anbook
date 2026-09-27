@@ -1,5 +1,5 @@
 import prisma from "../utils/prisma.js";
-import { v2 as cloudinary } from "cloudinary";
+import cloudinary from "../utils/cloudinary.js";  
 import fs from "fs";
 import {
   connectHashtags,
@@ -182,53 +182,62 @@ if(post.visibility === "FOLLOWERS" && (req.user || req.user.id !== post.userId))
 export const getUserPosts = async (req, res) => {
   try {
     const { userId } = req.params;
+    const viewerId = req.user?.id; // set by optionalAuth, undefined if logged out
 
-    const page = Number(req.query.page) || 1;
-    const limit = Math.min(Number(req.query.limit) || 10, 50);
+    const page = Math.max(Number(req.query.page) || 1, 1);
+    const limit = Math.min(Math.max(Number(req.query.limit) || 10, 1), 50);
     const skip = (page - 1) * limit;
 
-    const posts = await prisma.post.findMany({
-      where: {
-        userId,
-      },
-      skip,
-      take: limit,
+    // Which visibilities may this viewer see?
+    let allowed = ["PUBLIC"];
+    if (viewerId === userId) {
+      allowed = ["PUBLIC", "FOLLOWERS", "PRIVATE"];
+    } else if (viewerId) {
+      const isFollowing = await prisma.follow.findUnique({
+        where: { followerId_followingId: { followerId: viewerId, followingId: userId } },
+      });
+      if (isFollowing) allowed = ["PUBLIC", "FOLLOWERS"];
+    }
 
-      orderBy: {
-        createdAt: "desc",
-      },
+    const where = { userId, visibility: { in: allowed } };
 
-      include: {
-        media: true,
-        user: {
-          select: {
-            id: true,
-            username: true,
-            profileImage: true,
-          },
-        },
-      },
-    });
+    const include = {
+      media: true,
+      user: { select: { id: true, username: true, profileImage: true, isVerified: true } },
+      _count: { select: { likes: true, comments: true } },
+    };
+     if (viewerId) {
+      include.likes = { where: { userId: viewerId }, select: { id: true }, take: 1 };
+      include.bookmarks = { where: { userId: viewerId }, select: { id: true }, take: 1 };
+    }
 
-    const total = await prisma.post.count({
-      where: {
-        userId,
-      },
-    });
+    const [posts, total] = await Promise.all([
+      prisma.post.findMany({ where, skip, take: limit, orderBy: { createdAt: "desc" }, include }),
+      prisma.post.count({ where }),
+    ]);
+
+    const formattedPosts = posts.map(({ _count, likes, bookmarks, ...post }) => ({
+      ...post,
+      likeCount: _count.likes,
+      commentCount: _count.comments,
+      isLiked: Boolean(likes?.length),
+      isSaved: Boolean(bookmarks?.length),
+    }));
 
     res.status(200).json({
       success: true,
-      page,
-      limit,
-      total,
-      totalPages: Math.ceil(total / limit),
-      posts,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+        hasNextPage: page < Math.ceil(total / limit),
+      },
+      posts: formattedPosts,
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+    console.error("Get user posts error:", error);
+    res.status(500).json({ success: false, message: "Failed to get posts." });
   }
 };
 
